@@ -2,260 +2,448 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>ICODE Lamp Frame Decoder</title>
-<style>
-body {
-    font-family: monospace;
-    background:#111;
-    color:#0f0;
-    padding:20px;
-}
-textarea {
-    width:100%;
-    height:120px;
-    background:#000;
-    color:#0f0;
-}
-table {
-    border-collapse: collapse;
-    width:100%;
-    margin-top:20px;
-}
-th, td {
-    border:1px solid #0f0;
-    padding:6px;
-}
-th { background:#003300; }
-button { padding:8px 16px; margin-top:10px; }
-.ok { color:#00ff00; }
-.err { color:#ff4444; }
+<title>ICODE HEX TO DECIMAL</title>
 
-footer {
-    margin-top:40px;
-    text-align:center;
-    color:#00aa00;
-    opacity:0.8;
+
+<style>
+/* Niko Fadlan Ramadhan */
+body{
+font-family: monospace;
+background:#111;
+color:#0f0;
+padding:20px;
+}
+textarea{
+width:100%;
+height:120px;
+background:#000;
+color:#0f0;
+}
+
+table{
+border-collapse: collapse;
+width:100%;
+margin-top:20px;
+}
+
+th,td{
+border:1px solid #0f0;
+padding:6px;
+}
+
+th{
+background:#003300;
+}
+
+button{
+padding:8px 16px;
+margin-top:10px;
+}
+
+.ok{color:#00ff00;}
+.err{color:#ff4444;}
+
+footer{
+margin-top:40px;
+text-align:center;
+color:#00aa00;
 }
 </style>
+
 </head>
+
+
 <body>
 
-<h2>ICODE Lamp Frame Decoder (UTC+7)</h2>
+<h2>ICODE Universal Decoder</h2>
 
-<textarea id="hexInput" placeholder="Paste HEX frame here..."></textarea>
+<textarea id="hexInput"></textarea>
+
 <br>
+
 <button onclick="parse()">Decode</button>
 
+
 <table id="result">
+
 <tr>
 <th>Field</th>
 <th>Hex</th>
 <th>Value</th>
 </tr>
+
 </table>
 
 <footer>
-— Decoder Tool —
+HEX TO DECIMAL
 </footer>
+
 
 <script>
 
-let dateOverflow = false;
+
+let dateOverflow=false;
+
+
+/* BASIC */
 
 function hexToInt(hex){
-    return parseInt(hex,16);
+return parseInt(hex,16);
 }
 
 function hexToSigned32(hex){
-    let val = parseInt(hex,16);
-    if (val > 0x7FFFFFFF) val -= 0x100000000;
-    return val;
+
+let v=parseInt(hex,16);
+
+if(v>0x7FFFFFFF)
+v-=0x100000000;
+
+return v;
 }
+
+
+
+/* CRC */
+
+function calcCRC16(bytes){
+
+let crc=0xFFFF;
+
+for(let b of bytes){
+
+crc^=parseInt(b,16);
+
+for(let i=0;i<8;i++){
+
+if(crc&1)
+crc=(crc>>1)^0xA001;
+else
+crc>>=1;
+}
+}
+
+return crc.toString(16).padStart(4,'0');
+}
+
+
+
+/* BCD */
+
+function bcdDecode(bytes){
+
+let out="";
+
+for(let b of bytes){
+
+let v=parseInt(b,16);
+
+let high=(v>>4)&0xF;
+let low=v&0xF;
+
+out+=high.toString();
+out+=low.toString();
+}
+
+return out;
+}
+
+
+
+/* TIME */
 
 function formatTimeUTC7(hex){
 
-    let ss = parseInt(hex.slice(0,2),16);
-    let mm = parseInt(hex.slice(2,4),16);
-    let hh = parseInt(hex.slice(4,6),16);
+let ss=parseInt(hex.slice(0,2),16);
+let mm=parseInt(hex.slice(2,4),16);
+let hh=parseInt(hex.slice(4,6),16);
 
-    hh += 7; // UTC +7
+hh+=7;
 
-    if(hh >= 24){
-        hh -= 24;
-        dateOverflow = true;
-    } else {
-        dateOverflow = false;
-    }
-
-    return `${hh.toString().padStart(2,'0')}:` +
-           `${mm.toString().padStart(2,'0')}:` +
-           `${ss.toString().padStart(2,'0')}`;
+if(hh>=24){
+hh-=24;
+dateOverflow=true;
 }
+else
+dateOverflow=false;
+
+return `${hh.toString().padStart(2,'0')}:`+
+`${mm.toString().padStart(2,'0')}:`+
+`${ss.toString().padStart(2,'0')}`;
+}
+
 
 function formatDateWithOverflow(hex){
 
-    let dd = parseInt(hex.slice(0,2),16);
-    let mm = parseInt(hex.slice(2,4),16);
-    let yy = parseInt(hex.slice(4,6),16);
+let dd=parseInt(hex.slice(0,2),16);
+let mm=parseInt(hex.slice(2,4),16);
+let yy=parseInt(hex.slice(4,6),16);
 
-    if(dateOverflow){
-        dd += 1;
-    }
+if(dateOverflow)dd++;
 
-    return `${dd.toString().padStart(2,'0')}/` +
-           `${mm.toString().padStart(2,'0')}/20${yy}`;
+return `${dd.toString().padStart(2,'0')}/`+
+`${mm.toString().padStart(2,'0')}/20${yy}`;
 }
 
-function calcCRC16(bytes){
-    let crc = 0xFFFF;
-    for (let b of bytes){
-        crc ^= parseInt(b,16);
-        for (let i=0;i<8;i++){
-            if (crc & 1) crc = (crc >> 1) ^ 0xA001;
-            else crc >>= 1;
-        }
-    }
-    return crc.toString(16).padStart(4,'0');
+
+
+/* TABLE */
+
+function clearTable(){
+
+document.getElementById("result").innerHTML=`
+
+<tr>
+<th>Field</th>
+<th>Hex</th>
+<th>Value</th>
+</tr>`;
 }
+
+
+function row(name,hex,val,cls=""){
+
+let r=document.getElementById("result").insertRow();
+
+r.insertCell(0).innerText=name;
+r.insertCell(1).innerText="0x"+hex;
+
+let v=r.insertCell(2);
+v.innerText=val;
+
+if(cls)v.className=cls;
+}
+
+
+
+/* AUTO DETECT */
 
 function parse(){
 
-    const hexRaw = document.getElementById("hexInput").value.replace(/\s/g,'');
-    const bytes = hexRaw.match(/.{1,2}/g);
+let hexRaw=
+document.getElementById("hexInput")
+.value.replace(/\s/g,'');
 
-    if(!bytes){
-        alert("Invalid HEX input");
-        return;
-    }
+let bytes=hexRaw.match(/.{1,2}/g);
 
-    const table = document.getElementById("result");
+if(!bytes){
 
-    table.innerHTML = `
-    <tr>
-    <th>Field</th>
-    <th>Hex</th>
-    <th>Value</th>
-    </tr>`;
+alert("Invalid HEX");
 
-    function row(name, hex, val, cls=""){
-        let r = table.insertRow();
-        r.insertCell(0).innerText = name;
-        r.insertCell(1).innerText = "0x"+hex;
-        let v = r.insertCell(2);
-        v.innerText = val;
-        if(cls) v.className = cls;
-    }
-
-    // HEADER
-    row("Frame head", bytes[0], "Start Frame");
-    row("Length", bytes[1], hexToInt(bytes[1]));
-    row("Address", bytes.slice(2,6).join(""),
-        hexToInt(bytes.slice(2,6).join("")));
-
-    row("Dimming port", bytes[6], "Fixed");
-    row("Dimming function", bytes[7], "Fixed");
-    row("Dimming value", bytes[8], hexToInt(bytes[8])+" %");
-
-    row("Turn port", bytes[9], "Fixed");
-    row("Turn function", bytes[10], "Fixed");
-    row("Turn status", bytes[11],
-        bytes[11]=="00"?"ON":"OFF");
-
-    row("Collection port", bytes[12], "Fixed");
-    row("Collection function", bytes[13], "Fixed");
-    row("Effective length", bytes[14], "Fixed");
-
-    // ELECTRICAL
-    row("Voltage", bytes.slice(15,17).join(""),
-        (hexToInt(bytes.slice(15,17).join(""))/100)+" V");
-
-    row("Current", bytes.slice(17,19).join(""),
-        (hexToInt(bytes.slice(17,19).join(""))/1000)+" A");
-
-    row("Active Power", bytes.slice(19,21).join(""),
-        (hexToInt(bytes.slice(19,21).join(""))/10)+" W");
-
-    row("Reactive Power", bytes.slice(21,23).join(""),
-        (hexToInt(bytes.slice(21,23).join(""))/10)+" W");
-
-    row("Frequency", bytes.slice(23,25).join(""),
-        (hexToInt(bytes.slice(23,25).join(""))/100)+" Hz");
-
-    row("Active Energy", bytes.slice(25,27).join(""),
-        (hexToInt(bytes.slice(25,27).join(""))/100)+" kWh");
-
-    let tempHex = bytes.slice(27,29).join("");
-    let tempRaw = hexToInt(tempHex);
-    let tempValue = (tempRaw > 100000)
-        ? (tempRaw - 100000)/100
-        : tempRaw/100;
-
-    row("Temperature", tempHex, tempValue+" °C");
-
-    // TIME & DATE (UTC+7)
-    let timeHex = bytes.slice(29,32).join("");
-    row("Time (UTC+7)", timeHex, formatTimeUTC7(timeHex));
-
-    let dateHex = bytes.slice(32,35).join("");
-    row("Date", dateHex, formatDateWithOverflow(dateHex));
-
-    // NETWORK SECTION
-    let idx = 35;
-
-    function get4(name, signed=false){
-        if(idx + 4 > bytes.length-8) return;
-        let hex = bytes.slice(idx,idx+4).join("");
-        let val = signed ? hexToSigned32(hex) : hexToInt(hex);
-        row(name, hex, val);
-        idx += 4;
-    }
-
-    get4("Signal Power");
-    get4("Total Power");
-    get4("Tx Power");
-    get4("Rx Power");
-    get4("Tx Time");
-    get4("Rx Time");
-    get4("Cell ID");
-    get4("ECL");
-    get4("SNR", true);
-    get4("Earfcn");
-    get4("PCI");
-    get4("RSRQ", true);
-
-    // DEVICE WORKING (FROM BACK)
-    let workingHex =
-        bytes[bytes.length - 8] +
-        bytes[bytes.length - 7] +
-        bytes[bytes.length - 6] +
-        bytes[bytes.length - 5];
-
-    row("Device Working Times",
-        workingHex,
-        hexToInt(workingHex)+" minutes");
-
-    // RESTART
-    let restartHex =
-        bytes[bytes.length - 4] +
-        bytes[bytes.length - 3];
-
-    row("Restart Times",
-        restartHex,
-        hexToInt(restartHex)+" times");
-
-    // CRC
-    let crcFrame =
-        bytes[bytes.length - 2] +
-        bytes[bytes.length - 1];
-
-    let crcCalc = calcCRC16(bytes.slice(0,bytes.length-2));
-
-    row("CRC16 (Frame)", crcFrame,
-        "Calculated: 0x"+crcCalc,
-        crcFrame.toLowerCase()==crcCalc.toLowerCase()?"ok":"err");
+return;
 }
 
-</script>
-</body>
+clearTable();
 
+
+if(bytes[0]=="aa" && bytes[1]=="55"){
+
+decodeAA55(bytes);
+
+return;
+}
+
+
+decodeICODE(bytes);
+
+}
+
+
+
+/* AA55 */
+
+function decodeAA55(b){
+
+row("Frame Head",b[0]+b[1],"AA55");
+
+row("Length",
+b[2]+b[3],
+hexToInt(b[2]+b[3])+" bytes");
+
+row("Version",b[4],b[4]);
+row("Encrypt",b[5],b[5]);
+row("Type",b[6],b[6]);
+row("Reserved",b[7],b[7]);
+
+row("CRC16",
+b[8]+b[9],
+"Disabled");
+
+
+row("Address",
+b.slice(10,14).join(""),
+hexToInt(b.slice(10,14).join("")));
+
+row("Function Code",b[14],"0xD0");
+
+row("Serial",b[15],b[15]);
+
+row("IMEI",
+b.slice(16,24).join(""),
+bcdDecode(b.slice(16,24)));
+
+row("Serial",b[24],"08");
+
+row("IMSI",
+b.slice(25,33).join(""),
+bcdDecode(b.slice(25,33)));
+
+row("Serial",b[33],"03");
+
+row("CSQ",
+b[34],
+hexToInt(b[34]));
+
+row("Serial",b[35],"05");
+
+row("PCI",
+b[36],
+hexToInt(b[36]));
+
+row("Serial",b[37],"09");
+
+row("FW Version",
+b[38]+b[39]+b[40],
+hexToInt(b[38])+"."+hexToInt(b[39])+"."+hexToInt(b[40]));
+
+row("Timezone",
+b[41],
+"UTC+"+hexToInt(b[41]));
+
+}
+
+
+function decodeICODE(bytes){
+
+row("Frame head",bytes[0],"Start Frame");
+
+row("Length",bytes[1],hexToInt(bytes[1]));
+
+row("Address",
+bytes.slice(2,6).join(""),
+hexToInt(bytes.slice(2,6).join("")));
+
+row("Dimming port",bytes[6],"04");
+row("Dimming function",bytes[7],"10");
+
+row("Dimming value",
+bytes[8],
+hexToInt(bytes[8])+" %");
+
+row("Turn port",bytes[9],"05");
+row("Turn function",bytes[10],"04");
+
+row("Turn status",
+bytes[11],
+bytes[11]=="00"?"ON":"OFF");
+
+row("Collection port",bytes[12],"00");
+row("Collection function",bytes[13],"20");
+row("Effective length",bytes[14],"0C");
+
+
+row("Voltage",
+bytes.slice(15,17).join(""),
+hexToInt(bytes.slice(15,17).join(""))/100+" V");
+
+row("Current",
+bytes.slice(17,19).join(""),
+hexToInt(bytes.slice(17,19).join(""))/1000+" A");
+
+row("Active Power",
+bytes.slice(19,21).join(""),
+hexToInt(bytes.slice(19,21).join(""))/10+" W");
+
+row("Reactive Power",
+bytes.slice(21,23).join(""),
+hexToInt(bytes.slice(21,23).join(""))/10+" VAR");
+
+row("Frequency",
+bytes.slice(23,25).join(""),
+hexToInt(bytes.slice(23,25).join(""))/100+" Hz");
+
+row("Active Energy",
+bytes.slice(25,27).join(""),
+hexToInt(bytes.slice(25,27).join(""))/100+" kWh");
+
+
+let tempHex=bytes.slice(27,29).join("");
+let temp=(hexToInt(tempHex)-10000)/100;
+
+row("Temperature",
+tempHex,
+temp+" °C");
+
+
+let timeHex=bytes.slice(29,32).join("");
+
+row("Time",
+timeHex,
+formatTimeUTC7(timeHex));
+
+
+let dateHex=bytes.slice(32,35).join("");
+
+row("Date",
+dateHex,
+formatDateWithOverflow(dateHex));
+
+
+let idx=35;
+
+
+function get4(name,signed=false){
+
+let hex=bytes.slice(idx,idx+4).join("");
+
+let val=signed?
+hexToSigned32(hex):
+hexToInt(hex);
+
+row(name,hex,val);
+
+idx+=4;
+}
+
+
+get4("Signal Power",true);
+get4("Total Power",true);
+get4("Tx Power",true);
+get4("Rx Power",true);
+get4("Tx Time");
+get4("Rx Time");
+get4("Cell ID");
+get4("ECL");
+get4("SNR",true);
+get4("Earfcn");
+get4("PCI");
+get4("RSRQ",true);
+
+
+row("Device Working Times",
+bytes.slice(bytes.length-8,bytes.length-4).join(""),
+hexToInt(bytes.slice(bytes.length-8,bytes.length-4).join(""))+" min");
+
+
+row("Restart Times",
+bytes.slice(bytes.length-4,bytes.length-2).join(""),
+hexToInt(bytes.slice(bytes.length-4,bytes.length-2).join("")));
+
+
+let crcFrame=
+bytes.slice(bytes.length-2).join("");
+
+let crcCalc=
+calcCRC16(bytes.slice(0,bytes.length-2));
+
+row("CRC16",
+crcFrame,
+"Calc 0x"+crcCalc,
+crcFrame==crcCalc?"ok":"err");
+
+}
+
+/* Niko Fadlan Ramadhan */
+</script>
+
+</body>
 </html>
