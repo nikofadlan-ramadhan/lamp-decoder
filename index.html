@@ -1,57 +1,98 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>ICODE HEX TO DECIMAL</title>
 
+<meta charset="UTF-8">
+
+<title>ICODE Universal Decoder</title>
+
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 
 <style>
-/* Niko Fadlan Ramadhan */
+
+/* niko */
+
 body{
-font-family: monospace;
-background:#111;
-color:#0f0;
-padding:20px;
+font-family:"JetBrains Mono",monospace;
+background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+color:#e8fdf5;
+padding:30px;
 }
+
+h2{
+text-align:center;
+color:#9fffd8;
+}
+
 textarea{
 width:100%;
-height:120px;
-background:#000;
-color:#0f0;
+height:140px;
+background:#0b0f14;
+border:1px solid #1e3a3a;
+border-radius:10px;
+color:#8affc1;
+padding:12px;
+outline:none;
 }
 
-table{
-border-collapse: collapse;
-width:100%;
-margin-top:20px;
-}
-
-th,td{
-border:1px solid #0f0;
-padding:6px;
-}
-
-th{
-background:#003300;
+textarea.drag{
+border:2px dashed #00ffa6;
+background:#061010;
 }
 
 button{
-padding:8px 16px;
-margin-top:10px;
+margin-top:15px;
+padding:10px 24px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+background:linear-gradient(135deg,#00ffa6,#00c3ff);
+font-weight:600;
 }
 
-.ok{color:#00ff00;}
-.err{color:#ff4444;}
+table{
+border-collapse:collapse;
+width:100%;
+margin-top:25px;
+background:#0b0f14;
+border-radius:10px;
+overflow:hidden;
+}
+
+th{
+background:linear-gradient(135deg,#00ffa6,#00c3ff);
+color:#002;
+padding:10px;
+}
+
+td{
+padding:8px;
+border-bottom:1px solid #1c2c2c;
+}
+
+tr:hover{
+background:#111c1c;
+}
+
+.ok{
+color:#2aff9b;
+font-weight:600;
+}
+
+.err{
+color:#ff5c5c;
+font-weight:600;
+}
 
 footer{
-margin-top:40px;
+margin-top:30px;
 text-align:center;
-color:#00aa00;
+color:#6fffd2;
 }
+
 </style>
 
 </head>
-
 
 <body>
 
@@ -63,7 +104,6 @@ color:#00aa00;
 
 <button onclick="parse()">Decode</button>
 
-
 <table id="result">
 
 <tr>
@@ -74,16 +114,11 @@ color:#00aa00;
 
 </table>
 
-<footer>
-HEX TO DECIMAL
-</footer>
-
+<footer>HEX TO DECIMAL</footer>
 
 <script>
 
-
 let dateOverflow=false;
-
 
 /* BASIC */
 
@@ -101,40 +136,35 @@ v-=0x100000000;
 return v;
 }
 
-
-
-/* CRC */
+/* CRC16 MODBUS */
 
 function calcCRC16(bytes){
 
-let crc = 0xFFFF;
+let crc=0xFFFF;
 
 for(let b of bytes){
 
-crc ^= parseInt(b,16);
+crc^=parseInt(b,16);
 
 for(let i=0;i<8;i++){
 
-if(crc & 1)
-crc = (crc >> 1) ^ 0xA001;
+if(crc&1)
+crc=(crc>>1)^0xA001;
 else
-crc >>= 1;
+crc>>=1;
 
 }
 
 }
 
-/* convert to hex */
-let hex = crc.toString(16).padStart(4,'0');
+let hex=crc.toString(16).padStart(4,'0');
 
-/* MODBUS = LOW BYTE FIRST */
-let low  = hex.slice(2,4);
-let high = hex.slice(0,2);
+let low=hex.slice(2,4);
+let high=hex.slice(0,2);
 
-return (low + high).toLowerCase();
+return (low+high).toLowerCase();
+
 }
-
-
 
 /* BCD */
 
@@ -151,12 +181,12 @@ let low=v&0xF;
 
 out+=high.toString();
 out+=low.toString();
+
 }
 
 return out;
+
 }
-
-
 
 /* TIME */
 
@@ -171,15 +201,12 @@ hh+=7;
 if(hh>=24){
 hh-=24;
 dateOverflow=true;
-}
-else
+}else
 dateOverflow=false;
 
-return `${hh.toString().padStart(2,'0')}:`+
-`${mm.toString().padStart(2,'0')}:`+
-`${ss.toString().padStart(2,'0')}`;
-}
+return `${hh.toString().padStart(2,'0')}:${mm.toString().padStart(2,'0')}:${ss.toString().padStart(2,'0')}`;
 
+}
 
 function formatDateWithOverflow(hex){
 
@@ -189,11 +216,9 @@ let yy=parseInt(hex.slice(4,6),16);
 
 if(dateOverflow)dd++;
 
-return `${dd.toString().padStart(2,'0')}/`+
-`${mm.toString().padStart(2,'0')}/20${yy}`;
+return `${dd.toString().padStart(2,'0')}/${mm.toString().padStart(2,'0')}/20${yy}`;
+
 }
-
-
 
 /* TABLE */
 
@@ -206,8 +231,8 @@ document.getElementById("result").innerHTML=`
 <th>Hex</th>
 <th>Value</th>
 </tr>`;
-}
 
+}
 
 function row(name,hex,val,cls=""){
 
@@ -220,44 +245,38 @@ let v=r.insertCell(2);
 v.innerText=val;
 
 if(cls)v.className=cls;
+
 }
 
-
-
-/* AUTO DETECT */
+/* PARSER */
 
 function parse(){
 
-let hexRaw=
-document.getElementById("hexInput")
+let hexRaw=document
+.getElementById("hexInput")
 .value.replace(/\s/g,'');
 
 let bytes=hexRaw.match(/.{1,2}/g);
 
 if(!bytes){
-
 alert("Invalid HEX");
-
 return;
 }
 
 clearTable();
 
+/* AUTO DETECT FRAME */
 
 if(bytes[0]=="aa" && bytes[1]=="55"){
-
 decodeAA55(bytes);
-
 return;
 }
-
 
 decodeICODE(bytes);
 
 }
 
-
-/* AA55 */
+/* AA55 FRAME */
 
 function decodeAA55(b){
 
@@ -275,7 +294,6 @@ row("Reserved",b[7],b[7]);
 row("CRC16",
 b[8]+b[9],
 "Disabled");
-
 
 row("Address",
 b.slice(10,14).join(""),
@@ -297,15 +315,11 @@ bcdDecode(b.slice(25,33)));
 
 row("Serial",b[33],"03");
 
-row("CSQ",
-b[34],
-hexToInt(b[34]));
+row("CSQ",b[34],hexToInt(b[34]));
 
 row("Serial",b[35],"05");
 
-row("PCI",
-b[36],
-hexToInt(b[36]));
+row("PCI",b[36],hexToInt(b[36]));
 
 row("Serial",b[37],"09");
 
@@ -313,12 +327,11 @@ row("FW Version",
 b[38]+b[39]+b[40],
 hexToInt(b[38])+"."+hexToInt(b[39])+"."+hexToInt(b[40]));
 
-row("Timezone",
-b[41],
-"UTC+"+hexToInt(b[41]));
+row("Timezone",b[41],"UTC+"+hexToInt(b[41]));
 
 }
 
+/* ICODE FRAME */
 
 function decodeICODE(bytes){
 
@@ -348,9 +361,6 @@ row("Collection port",bytes[12],"00");
 row("Collection function",bytes[13],"20");
 row("Effective length",bytes[14],"0C");
 
-
-/* ELECTRIC DATA */
-
 row("Voltage",
 bytes.slice(15,17).join(""),
 hexToInt(bytes.slice(15,17).join(""))/100+" V");
@@ -371,42 +381,23 @@ row("Frequency",
 bytes.slice(23,25).join(""),
 hexToInt(bytes.slice(23,25).join(""))/100+" Hz");
 
-
 row("Active Energy",
 bytes.slice(25,29).join(""),
 hexToInt(bytes.slice(25,29).join(""))/100+" kWh");
-
-
-/* TEMPERATURE */
 
 let tempHex=bytes.slice(29,31).join("");
 
 let temp=(hexToInt(tempHex)-10000)/100;
 
-row("Temperature",
-tempHex,
-temp+" °C");
-
-
-/* TIME */
+row("Temperature",tempHex,temp+" °C");
 
 let timeHex=bytes.slice(31,34).join("");
 
-row("Time",
-timeHex,
-formatTimeUTC7(timeHex));
-
-
-/* DATE */
+row("Time",timeHex,formatTimeUTC7(timeHex));
 
 let dateHex=bytes.slice(34,37).join("");
 
-row("Date",
-dateHex,
-formatDateWithOverflow(dateHex));
-
-
-/* SIGNAL INFO */
+row("Date",dateHex,formatDateWithOverflow(dateHex));
 
 let idx=37;
 
@@ -421,6 +412,7 @@ hexToInt(hex);
 row(name,hex,val);
 
 idx+=4;
+
 }
 
 get4("Signal Power",true);
@@ -436,41 +428,66 @@ get4("Earfcn");
 get4("PCI");
 get4("RSRQ",true);
 
-
-/* DEVICE INFO */
-
 row("Device Working Times",
 bytes.slice(bytes.length-8,bytes.length-4).join(""),
 hexToInt(bytes.slice(bytes.length-8,bytes.length-4).join(""))+" min");
-
 
 row("Restart Times",
 bytes.slice(bytes.length-4,bytes.length-2).join(""),
 hexToInt(bytes.slice(bytes.length-4,bytes.length-2).join("")));
 
+let crcFrame=bytes.slice(bytes.length-2).join("").toLowerCase();
 
-/* CRC */
+let crcCalc=calcCRC16(bytes.slice(0,bytes.length-2));
 
-let crcFrame =
-bytes.slice(bytes.length-2).join("").toLowerCase();
+let status=(crcFrame===crcCalc)?"OK":"ERROR";
 
-let crcCalc =
-calcCRC16(bytes.slice(0,bytes.length-2)).toLowerCase();
-
-let status = (crcFrame === crcCalc) ? "OK" : "ERROR";
-
-row(
-"CRC16",
+row("CRC16",
 crcFrame,
 "Calc 0x"+crcCalc+" = "+status,
-status==="OK" ? "ok" : "err"
-);
+status==="OK"?"ok":"err");
 
 }
 
-/* Niko Fadlan Ramadhan */
+/* UX FEATURES */
+
+const hexBox=document.getElementById("hexInput");
+
+hexBox.addEventListener("focus",()=>{
+if(hexBox.value.length>0)
+hexBox.select();
+});
+
+hexBox.addEventListener("paste",e=>{
+e.preventDefault();
+let text=(e.clipboardData||window.clipboardData).getData("text");
+hexBox.value=text.replace(/\s/g,'');
+parse();
+});
+
+hexBox.addEventListener("dragover",e=>{
+e.preventDefault();
+hexBox.classList.add("drag");
+});
+
+hexBox.addEventListener("dragleave",()=>{
+hexBox.classList.remove("drag");
+});
+
+hexBox.addEventListener("drop",e=>{
+e.preventDefault();
+hexBox.classList.remove("drag");
+
+let text=e.dataTransfer.getData("text");
+
+if(text){
+hexBox.value=text.replace(/\s/g,'');
+parse();
+}
+
+});
+
 </script>
 
 </body>
 </html>
-
