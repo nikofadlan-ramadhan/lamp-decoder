@@ -90,6 +90,49 @@ text-align:center;
 color:#6fffd2;
 }
 
+/* ANIMATION */
+
+@keyframes fadeIn{
+from{
+opacity:0;
+transform:translateY(8px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+@keyframes glow{
+0%{box-shadow:0 0 5px #00ffa6;}
+50%{box-shadow:0 0 15px #00ffa6;}
+100%{box-shadow:0 0 5px #00ffa6;}
+}
+
+/* table animation */
+
+#result tr{
+animation:fadeIn .50s ease forwards;
+}
+
+/* textarea focus */
+
+textarea:focus{
+box-shadow:0 0 10px rgba(0,255,170,0.5);
+}
+
+/* button animation */
+
+button:hover{
+animation:glow 1s infinite;
+transform:translateY(-1px);
+}
+
+/* row hover smooth */
+
+tr{
+transition:all .2s ease;
+}
 </style>
 
 </head>
@@ -238,6 +281,8 @@ function row(name,hex,val,cls=""){
 
 let r=document.getElementById("result").insertRow();
 
+r.style.animation="fadeIn .25s ease";
+
 r.insertCell(0).innerText=name;
 r.insertCell(1).innerText="0x"+hex;
 
@@ -251,6 +296,12 @@ if(cls)v.className=cls;
 /* PARSER */
 
 function parse(){
+
+document.getElementById("result").style.opacity="0";
+
+setTimeout(()=>{
+document.getElementById("result").style.opacity="1";
+},50);
 
 let hexRaw=document
 .getElementById("hexInput")
