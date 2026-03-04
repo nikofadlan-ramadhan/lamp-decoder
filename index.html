@@ -107,22 +107,31 @@ return v;
 
 function calcCRC16(bytes){
 
-let crc=0xFFFF;
+let crc = 0xFFFF;
 
 for(let b of bytes){
 
-crc^=parseInt(b,16);
+crc ^= parseInt(b,16);
 
 for(let i=0;i<8;i++){
 
-if(crc&1)
-crc=(crc>>1)^0xA001;
+if(crc & 1)
+crc = (crc >> 1) ^ 0xA001;
 else
-crc>>=1;
-}
+crc >>= 1;
+
 }
 
-return crc.toString(16).padStart(4,'0');
+}
+
+/* convert to hex */
+let hex = crc.toString(16).padStart(4,'0');
+
+/* MODBUS = LOW BYTE FIRST */
+let low  = hex.slice(2,4);
+let high = hex.slice(0,2);
+
+return (low + high).toLowerCase();
 }
 
 
@@ -248,7 +257,6 @@ decodeICODE(bytes);
 }
 
 
-
 /* AA55 */
 
 function decodeAA55(b){
@@ -364,8 +372,6 @@ bytes.slice(23,25).join(""),
 hexToInt(bytes.slice(23,25).join(""))/100+" Hz");
 
 
-/* UPDATED FIELD (4 BYTE) */
-
 row("Active Energy",
 bytes.slice(25,29).join(""),
 hexToInt(bytes.slice(25,29).join(""))/100+" kWh");
@@ -445,16 +451,20 @@ hexToInt(bytes.slice(bytes.length-4,bytes.length-2).join("")));
 
 /* CRC */
 
-let crcFrame=
-bytes.slice(bytes.length-2).join("");
+let crcFrame =
+bytes.slice(bytes.length-2).join("").toLowerCase();
 
-let crcCalc=
-calcCRC16(bytes.slice(0,bytes.length-2));
+let crcCalc =
+calcCRC16(bytes.slice(0,bytes.length-2)).toLowerCase();
 
-row("CRC16",
+let status = (crcFrame === crcCalc) ? "OK" : "ERROR";
+
+row(
+"CRC16",
 crcFrame,
-"Calc 0x"+crcCalc,
-crcFrame==crcCalc?"ok":"err");
+"Calc 0x"+crcCalc+" = "+status,
+status==="OK" ? "ok" : "err"
+);
 
 }
 
