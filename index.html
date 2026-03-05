@@ -337,14 +337,65 @@ row("Length",
 b[2]+b[3],
 hexToInt(b[2]+b[3])+" bytes");
 
+// let frameLen = hexToInt(b[2]+b[3]);
+
+// if(b.length !== frameLen){
+// row(
+// "Length Check",
+// b.length,
+// "Frame size mismatch",
+// "err"
+// );
+// }else{
+// row(
+// "Length Check",
+// b.length,
+// "Frame size OK",
+// "ok"
+// );
+// }
+
+let frameLen = hexToInt(b[2]+b[3]);
+
+let payloadLength = b.length - 10;
+
+if(payloadLength !== frameLen){
+
+row(
+"Length Check",
+payloadLength,
+"Frame size mismatch",
+"err"
+);
+
+}else{
+
+row(
+"Length Check",
+payloadLength,
+"Frame size OK",
+"ok"
+);
+
+}
+
 row("Version",b[4],b[4]);
 row("Encrypt",b[5],b[5]);
 row("Type",b[6],b[6]);
 row("Reserved",b[7],b[7]);
 
-row("CRC16",
-b[8]+b[9],
-"Disabled");
+let crcFrame=(b[8]+b[9]).toLowerCase();
+
+let crcCalc=calcCRC16(b.slice(10));
+
+let status=(crcFrame===crcCalc)?"OK":"ERROR";
+
+row(
+"CRC16",
+crcFrame,
+"Calc 0x"+crcCalc+" = "+status,
+status==="OK"?"ok":"err"
+);
 
 row("Address",
 b.slice(10,14).join(""),
@@ -469,7 +520,7 @@ idx+=4;
 get4("Signal Power",true);
 get4("Total Power",true);
 get4("Tx Power",true);
-get4("Rx Power",true);
+//get4("Rx Power",true);
 get4("Tx Time");
 get4("Rx Time");
 get4("Cell ID");
