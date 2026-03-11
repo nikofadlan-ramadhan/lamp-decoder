@@ -323,6 +323,11 @@ decodeAA55(bytes);
 return;
 }
 
+if(bytes[0]=="26"){
+decode26(bytes);
+return;
+}
+
 decodeICODE(bytes);
 
 }
@@ -551,6 +556,62 @@ status==="OK"?"ok":"err");
 
 }
 
+function decode26(bytes){
+
+row("Frame head",bytes[0],"Start Frame");
+
+row("Length",bytes[1],hexToInt(bytes[1])+" bytes");
+
+
+row("Device Address",
+bytes.slice(2,6).join(""),
+hexToInt(bytes.slice(2,6).join("")));
+
+
+row("Device Working Time",
+bytes.slice(6,10).join(""),
+hexToInt(bytes.slice(6,10).join(""))+" min");
+
+
+row("Restart Times",
+bytes.slice(10,12).join(""),
+hexToInt(bytes.slice(10,12).join("")));
+
+
+row("Active Energy",
+bytes.slice(12,16).join(""),
+hexToInt(bytes.slice(12,16).join(""))/100+" kWh");
+
+
+row("Reactive Power",
+bytes.slice(16,20).join(""),
+hexToInt(bytes.slice(16,20).join(""))/100+" VAR");
+
+
+row("Apparent Power",
+bytes.slice(20,24).join(""),
+hexToInt(bytes.slice(20,24).join(""))/100+" VA");
+
+
+/* CRC */
+
+let crcFrame=
+bytes.slice(bytes.length-2).join("").toLowerCase();
+
+let crcCalc=
+calcCRC16(bytes.slice(0,bytes.length-2));
+
+let status=(crcFrame===crcCalc)?"OK":"ERROR";
+
+row(
+"CRC16",
+crcFrame,
+"Calc 0x"+crcCalc+" = "+status,
+status==="OK"?"ok":"err"
+);
+
+}
+
 /* UX FEATURES */
 
 const hexBox=document.getElementById("hexInput");
@@ -593,3 +654,4 @@ parse();
 
 </body>
 </html>
+
